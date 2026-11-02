@@ -102,15 +102,19 @@ run_quietly apt-get install -y sudo
 
 echo -e "${GREEN}[SUCCESS]${NC} sudo installed successfully."
 
-# Create user part if it does not exist
+# Create user part if it does not exists
 if id part &>/dev/null; then
     echo -e "${BLUE}[INFO]${NC} User 'part' already exists."
 else
     echo -e "${BLUE}[INFO]${NC} Creating user 'part'..."
 
     adduser --disabled-password --gecos "" part
+
     echo -e "${BLUE}[INFO]${NC} Set password for user 'part':"
-    passwd part
+
+    while ! passwd part; do
+        echo -e "${RED}[ERROR]${NC} Passwords do not match or password setting failed. Try again."
+    done
 
     echo -e "${GREEN}[SUCCESS]${NC} User 'part' created successfully."
 fi
@@ -119,7 +123,7 @@ fi
 if id -nG part | grep -qw sudo; then
     echo -e "${BLUE}[INFO]${NC} User 'part' is already in the sudo group."
 else
-    usermod -aG sudo part
+    run_quietly usermod -aG sudo part
     echo -e "${GREEN}[SUCCESS]${NC} User 'part' added to the sudo group."
 fi
 
@@ -161,7 +165,7 @@ echo -e "${BLUE}[INFO]${NC} Installing OpenSSH Server..."
 
 run_quietly apt-get install -y openssh-server
 
-systemctl enable --now ssh
+run_quietly systemctl enable --now ssh
 
 echo -e "${GREEN}[SUCCESS]${NC} OpenSSH Server installed and enabled."
 
@@ -180,7 +184,7 @@ ClientAliveCountMax 0
 EOF
 
 if run_quietly /usr/sbin/sshd -t; then
-    systemctl reload ssh
+    run_quietly systemctl reload ssh
     echo -e "${GREEN}[SUCCESS]${NC} SSH configuration applied."
 else
     echo -e "${RED}[ERROR]${NC} Invalid SSH configuration."
@@ -208,8 +212,8 @@ EOF
 
 echo -e "${BLUE}[INFO]${NC} Enabling NTP service..."
 
-systemctl enable --now systemd-timesyncd
-systemctl restart systemd-timesyncd
+run_quietly systemctl enable --now systemd-timesyncd
+run_quietly systemctl restart systemd-timesyncd
 
 echo -e "${GREEN}[SUCCESS]${NC} NTP service enabled and started."
 
@@ -240,7 +244,7 @@ echo -e "${BLUE}[INFO]${NC} Installing nftables..."
 run_quietly apt-get install -y nftables
 
 echo -e "${BLUE}[INFO]${NC} Enabling nftables service..."
-systemctl enable nftables
+run_quietly systemctl enable nftables
 
 echo -e "${GREEN}[SUCCESS]${NC} nftables installed and enabled."
 
@@ -319,10 +323,10 @@ EOF
 
 chmod 750 /usr/local/sbin/ep4-update-debian-ips.sh
 
-nft -c -f /etc/nftables.conf
-systemctl restart nftables
+run_quietly nft -c -f /etc/nftables.conf
+run_quietly systemctl restart nftables
 
-/usr/local/sbin/ep4-update-debian-ips.sh
+run_quietly /usr/local/sbin/ep4-update-debian-ips.sh
 
 cat > /etc/cron.d/ep4-update-debian-ips <<'EOF'
 */5 * * * * root /usr/local/sbin/ep4-update-debian-ips.sh
@@ -406,9 +410,9 @@ EOF
 
 chmod 644 /etc/cron.d/ep4-sysinfo
 
-systemctl enable --now cron
+run_quietly systemctl enable --now cron
 
 echo -e "${GREEN}[SUCCESS]${NC} Sysinfo cron job configured."
 
 chmod 644 /etc/cron.d/ep4-sysinfo
-systemctl enable --now cron
+run_quietly systemctl enable --now cron
